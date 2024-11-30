@@ -32,10 +32,6 @@ ICONS = {
 
 # Sidebar Layout using ui.sidebar for filtering options
 sidebar = ui.sidebar(
-    # Removed the "Titanic Data Filters" heading
-    # ui.h5(ui.TagList("Titanic Data Filters ", ICONS['ship'])),  # Title for sidebar
-
-    # Pclass Selectize dropdown with ticket icon, adding "Select All" option
     ui.input_selectize(
         "selected_pclass", 
         ui.TagList("Select Pclass ", ICONS['ticket']),  
@@ -43,8 +39,6 @@ sidebar = ui.sidebar(
         selected=["1"],  
         multiple=True  
     ),
-
-    # Gender Selectize dropdown with person icon, adding "Select All" option
     ui.input_selectize(
         "selected_sex", 
         ui.TagList("Select Gender ", ICONS['person']),  
@@ -52,8 +46,6 @@ sidebar = ui.sidebar(
         selected=["male", "female"],  
         multiple=True  
     ),
-
-    # Age range slider with calendar icon
     ui.input_slider(
         "age_range", 
         ui.TagList("Select Age Range ", ICONS['calendar']),  
@@ -62,8 +54,6 @@ sidebar = ui.sidebar(
         value=[20, 50], 
         step=1  
     ),
-    
-    # Dropdown to select plot type
     ui.input_select(
         "selected_plot", 
         "Select Plot Type", 
@@ -74,19 +64,23 @@ sidebar = ui.sidebar(
 
 # UI Definition using ui.page_sidebar() for main content layout
 app_ui = ui.page_sidebar(
-    sidebar,  # Sidebar content (previously defined)
-    
-    # Main content area using ui.page_fluid() for fluid layout
+    sidebar,  
     ui.page_fluid(
-        # Title for the page
-        ui.h2("Interactive Titanic Data Insights", align="center"),  # New title
-
-        # Dynamic output based on selected plot type
+        ui.h2("Interactive Titanic Data Insights", align="center"),
         ui.row(
             ui.column(12,
                 ui.card(
                     ui.card_header(ui.TagList("Titanic Data Visualizations", ICONS['ship'])),
                     ui.card_body(ui.output_ui("selected_visualization"))
+                )
+            )
+        ),
+        # New live watch and ticket sold section
+        ui.row(
+            ui.column(12,
+                ui.card(
+                    ui.card_header("Live Watch and Ticket Sales"),
+                    ui.card_body(ui.output_ui("live_watch"))
                 )
             )
         )
@@ -99,29 +93,23 @@ def server(input, output, session):
     # Reactive calculation to simulate data updates or filtering based on inputs
     @reactive.Calc
     def filtered_data():
-        # Get the inputs correctly
-        selected_pclass = input.selected_pclass()  # Get passenger class
-        selected_sex = input.selected_sex()  # Get gender
-        age_range = input.age_range()  # Get age range
+        selected_pclass = input.selected_pclass()
+        selected_sex = input.selected_sex()
+        age_range = input.age_range()
 
-        # Filter data based on inputs
         filtered_df = df.copy()
 
-        # Handle "Select All" logic for passenger class and gender filters
         if "All" in selected_pclass:
-            selected_pclass = ["1", "2", "3"]  # Treat "All" as all classes
+            selected_pclass = ["1", "2", "3"]
         if "All" in selected_sex:
-            selected_sex = ["male", "female"]  # Treat "All" as all genders
+            selected_sex = ["male", "female"]
         
-        # Apply passenger class filter (ensure the input is iterable)
         if selected_pclass:
             filtered_df = filtered_df[filtered_df['pclass'].isin(map(int, selected_pclass))]
         
-        # Apply gender filter (ensure the input is iterable)
         if selected_sex:
             filtered_df = filtered_df[filtered_df['sex'].isin(selected_sex)]
         
-        # Apply age range filter
         if age_range:
             filtered_df = filtered_df[(filtered_df['age'] >= age_range[0]) & (filtered_df['age'] <= age_range[1])]
 
@@ -131,7 +119,6 @@ def server(input, output, session):
     @output
     @render.ui
     def selected_visualization():
-        # Get the selected plot type
         plot_type = input.selected_plot()
 
         if plot_type == "Scatterplot: Age vs Fare":
@@ -148,46 +135,83 @@ def server(input, output, session):
 
     # Render the Plotly Scatterplot for Age vs Fare with custom axis ticks
     def age_vs_fare_scatterplot():
-        filtered_df = filtered_data()  # Directly call the reactive filtered data
+        filtered_df = filtered_data()
         fig = px.scatter(filtered_df, x='age', y='fare', color='survived', title='Age vs Fare (Titanic Dataset)')
         
-        # Customize the x-axis and y-axis with specific tick values
         fig.update_layout(
             xaxis=dict(
                 tickmode='array',
-                tickvals=[0, 20, 40, 60],  # Custom tick values for age
-                ticktext=['0', '20', '40', '60']  # Custom tick labels for age
+                tickvals=[0, 20, 40, 60],
+                ticktext=['0', '20', '40', '60']
             ),
             yaxis=dict(
                 tickmode='array',
-                tickvals=[10, 20, 30, 40, 50, 60, 70],  # Custom tick values for fare
-                ticktext=['10', '20', '30', '40', '50', '60', '70']  # Custom tick labels for fare
+                tickvals=[10, 20, 30, 40, 50, 60, 70],
+                ticktext=['10', '20', '30', '40', '50', '60', '70']
             )
         )
-        return ui.HTML(fig.to_html(full_html=False))  # Render Plotly figure as HTML
+        return ui.HTML(fig.to_html(full_html=False))
 
     # Render the Plotly Histogram for Age Distribution
     def age_distribution_histogram():
-        filtered_df = filtered_data()  # Directly call the reactive filtered data
-        fig = px.histogram(filtered_df, x='age', nbins=20, title='Age Distribution of Titanic Passengers')  # Corrected title
-        return ui.HTML(fig.to_html(full_html=False))  # Render Plotly histogram as HTML
+        filtered_df = filtered_data()
+        fig = px.histogram(filtered_df, x='age', nbins=20, title='Age Distribution of Titanic Passengers')
+        return ui.HTML(fig.to_html(full_html=False))
 
     # Render the Data Grid for Titanic Dataset (without row index)
     def data_grid():
-        filtered_df = filtered_data()  # Directly call the reactive filtered data
-        # Make sure the filtered dataframe has data before rendering
+        filtered_df = filtered_data()
         if filtered_df.empty:
             return ui.markdown("No data to display with the selected filters.")
-        
-        # Render the filtered data table, excluding the index
-        return ui.HTML(filtered_df.to_html(classes='table table-striped table-bordered', index=False))  # Exclude the row index
+        return ui.HTML(filtered_df.to_html(classes='table table-striped table-bordered', index=False))
 
     # Render a Box Plot for the Titanic dataset grouped by the "survived" column
     def box_plot_survived():
-        filtered_df = filtered_data()  # Directly call the reactive filtered data
+        filtered_df = filtered_data()
         fig = px.box(filtered_df, x="survived", y="age", title="Box Plot: Titanic Dataset by Survived")
-        return ui.HTML(fig.to_html(full_html=False))  # Render Plotly figure as HTML
+        return ui.HTML(fig.to_html(full_html=False))
 
+    # Live Watch and Ticket Counter Simulation
+    @output
+    @render.ui
+    def live_watch():
+        return ui.HTML("""
+            <div id="live-watch" style="text-align: center; background-color: #f0f0f0; padding: 20px; border-radius: 8px;">
+                🕒 Live Watch: <span id="time" style="font-weight: bold; color: #007BFF;">00:00</span> | 
+                🎟️ Tickets Sold: <span id="ticket" style="font-weight: bold; color: #28a745;">0</span>
+            </div>
+            <script>
+                let timeElapsed = 0;  // Time in seconds
+                let ticketCount = 0;  // Ticket count
+                let ticketInterval = 1000; // Simulate tickets being sold every 1000ms (1 ticket per second)
+                let timeInterval = 1000;  // Simulate real-time passage of 1 second
+                let timeDisplay = document.getElementById('time');
+                let ticketDisplay = document.getElementById('ticket');
+                
+                // Format time in MM:SS format
+                function formatTime(seconds) {
+                    let minutes = Math.floor(seconds / 60);
+                    let remainingSeconds = seconds % 60;
+                    if (remainingSeconds < 10) {
+                        remainingSeconds = '0' + remainingSeconds;
+                    }
+                    return minutes + ':' + remainingSeconds;
+                }
+
+                // Simulate the time passing
+                setInterval(() => {
+                    timeElapsed++;
+                    timeDisplay.textContent = formatTime(timeElapsed);  // Update time every second
+                }, timeInterval);  // Update time every 1000 ms
+
+                // Simulate tickets being sold at a slower pace
+                setInterval(() => {
+                    ticketCount += 1;  // Increase ticket count
+                    ticketDisplay.textContent = ticketCount;  // Update ticket display every ticketInterval ms
+                }, ticketInterval);  // Update tickets every 1000 ms (slower pace)
+            </script>
+        """)
+        
 # Create the app object
 app = App(app_ui, server)
 
