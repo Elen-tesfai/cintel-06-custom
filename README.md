@@ -47,11 +47,8 @@ Welcome to my interactive app built using **Shiny for Python**. This app explore
 4. **Run the app**:
     ```bash
     python app.py
-    ```
-
-The app will be available at `http://127.0.0.1:8000/`.
-
----
+    ```bash
+  The app will be available at browser and navigate to the provided local address:(typically http://127.0.0.1:8000/)
 
 ## GitHub Pages Deployment
 
